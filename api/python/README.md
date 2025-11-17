@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-Make AI agents to collaborate, delegate, and coordinate with each other autonomously. Build multi-agent systems where agents work together - a research agent consults specialists, a design agent brainstorms with analysts, or your OpenAI agent delegates to specialized agents. All seamlessly, all automatically.
+Allow AI agents to collaborate, delegate, and coordinate with each other autonomously. Build multi-agent systems where agents work together - a research agent consults specialists, a design agent brainstorms with analysts, or your OpenAI agent delegates to specialized agents. All seamlessly, all automatically.
 
 The library provides type-safe interfaces for creating collaborative agents with built-in intelligent orchestration. It works with any LLM provider (OpenAI, Anthropic, Google) and enables true agent-to-agent interaction.
 
@@ -542,306 +542,88 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
----
+## Error Handling
 
-## Best Practices
-
-### 1. Agent Design
-
-**DO:**
-- ✅ Give agents focused, specific skills
-- ✅ Write clear, descriptive agent descriptions
-- ✅ Use detailed skill definitions with tags
-- ✅ Include proper error handling in executor functions
-
-**DON'T:**
-- ❌ Create "do everything" agents
-- ❌ Use vague descriptions like "General agent"
-- ❌ Skip skill tags (they help with routing)
-- ❌ Let exceptions crash your executor
-
-### 2. Orchestration
-
-**DO:**
-- ✅ Use descriptive agent and skill names
-- ✅ Review confidence scores before execution
-- ✅ Check alternative agents for complex tasks
-- ✅ Tune temperature based on your use case
-
-**DON'T:**
-- ❌ Ignore low confidence scores (< 0.6)
-- ❌ Use orchestration for single-agent systems
-- ❌ Over-rely on default settings
-- ❌ Skip testing with various task types
-
-### 3. Production Deployment
-
-**DO:**
-- ✅ Use environment variables for API keys
-- ✅ Implement comprehensive logging
-- ✅ Add health check endpoints
-- ✅ Set reasonable timeouts
-- ✅ Use async context managers (`async with`)
-
-**DON'T:**
-- ❌ Hard-code credentials
-- ❌ Run without error monitoring
-- ❌ Use default ports in production
-- ❌ Forget to clean up resources
-- ❌ Skip authentication
-
-### 4. Error Handling
+When the library encounters connection issues or API errors, appropriate exceptions are raised:
 
 ```python
-async def robust_executor(context):
-    try:
-        user_message = context.get_user_input()
-        
-        # Your logic here
-        result = await do_something(user_message)
-        
-        return result
-    
-    except ValueError as e:
-        # Handle expected errors gracefully
-        return f"I couldn't process that: {e}"
-    
-    except Exception as e:
-        # Log unexpected errors
-        logger.error(f"Executor error: {e}", exc_info=True)
-        return "I encountered an unexpected error. Please try again."
+import synqed
+from synqed import Client
+
+try:
+    async with Client("http://localhost:8000") as client:
+        response = await client.ask("Hello")
+except synqed.ConnectionError as e:
+    print("Could not connect to agent")
+    print(e.__cause__)
+except synqed.TimeoutError as e:
+    print("Request timed out")
+except synqed.AgentError as e:
+    print(f"Agent returned error: {e}")
 ```
 
-### 5. Resource Management
+## Timeouts
+
+By default, requests time out after 60 seconds. Configure timeouts as needed:
 
 ```python
-# Good: Use context manager
+from synqed import Client
+
+# Default timeout (60 seconds)
+client = Client("http://localhost:8000")
+
+# Custom timeout
+client = Client("http://localhost:8000", timeout=120.0)
+
+# Per-request timeout
+async with Client("http://localhost:8000") as client:
+    response = await client.with_options(timeout=30.0).ask("Quick task")
+```
+
+## Resource Management
+
+Always clean up resources using context managers:
+
+```python
+# Recommended: Use context manager
 async with Client("http://localhost:8000") as client:
     response = await client.ask("Hello")
+# Client automatically closed
 
-# Good: Manual cleanup
+# Manual cleanup
 client = Client("http://localhost:8000")
 try:
     response = await client.ask("Hello")
 finally:
     await client.close()
-
-# Bad: No cleanup
-client = Client("http://localhost:8000")
-response = await client.ask("Hello")
-# Resources leak!
 ```
 
----
+## Agent-to-Agent Communication
 
-## 🔒 Security Considerations
-
-### Environment Variables
-
-**Never** hard-code credentials:
+Agents can collaborate by calling each other directly:
 
 ```python
-# ❌ BAD
-orchestrator = Orchestrator(
-    provider=LLMProvider.OPENAI,
-    api_key="sk-proj-abc123...",  # DON'T DO THIS!
-    model="gpt-4o"
-)
-
-# ✅ GOOD
-import os
-
-orchestrator = Orchestrator(
-    provider=LLMProvider.OPENAI,
-    api_key=os.getenv("OPENAI_API_KEY"),
-    model="gpt-4o"
-)
+async def coordinator_logic(context):
+    """Coordinator agent that delegates to specialists."""
+    task = context.get_user_input()
+    
+    # Call specialist agents
+    async with Client("http://localhost:8001") as research_client:
+        research = await research_client.ask(f"Research: {task}")
+    
+    async with Client("http://localhost:8002") as analysis_client:
+        analysis = await analysis_client.ask(f"Analyze: {research}")
+    
+    return f"Final result: {analysis}"
 ```
 
-### Authentication
+## Requirements
 
-```python
-agent = Agent(
-    name="SecureAgent",
-    description="Requires authentication",
-    skills=["secure_skill"],
-    executor=logic,
-    security_schemes={
-        "api_key": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-API-Key"
-        }
-    }
-)
-```
+- Python 3.10 or higher
 
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. "Connection refused"
-
-**Problem:** Client can't connect to agent
-
-**Solution:**
-```python
-# Make sure agent is running
-# Check the port matches
-# Try: curl http://localhost:8000/agent-card
-```
-
-#### 2. "Module not found: openai"
-
-**Problem:** Missing LLM provider package
-
-**Solution:**
-```bash
-pip install openai  # or anthropic, google-generativeai
-```
-
-#### 3. Streaming not working
-
-**Problem:** No streaming support or agent doesn't stream
-
-**Solution:**
-```python
-# Enable streaming in agent
-agent = Agent(
-    name="MyAgent",
-    description="...",
-    skills=["..."],
-    executor=logic,
-    capabilities={"streaming": True}  # Add this
-)
-
-# Enable in client
-client = Client("http://localhost:8000", streaming=True)
-```
-
-#### 4. Low orchestration confidence
-
-**Problem:** Orchestrator is unsure which agent to select
-
-**Solution:**
-- Improve agent descriptions
-- Add more detailed skills with tags
-- Make agent names more descriptive
-- Use a more powerful LLM (e.g., GPT-4o vs GPT-4o-mini)
-
-#### 5. "Task timeout"
-
-**Problem:** Agent takes too long to respond
-
-**Solution:**
-```python
-# Increase client timeout
-client = Client("http://localhost:8000", timeout=120.0)
-
-# Or implement progress updates in your executor
-```
-
----
-
-## 📊 Performance Tips
-
-### 1. Use Background Servers for Multiple Agents
-
-```python
-# Start all agents in background
-await recipe_server.start_background()
-await shopping_server.start_background()
-await weather_server.start_background()
-
-# Now they all run concurrently
-```
-
-### 2. Reuse Clients
-
-```python
-# ❌ BAD: Create new client for each request
-for task in tasks:
-    async with Client(url) as client:
-        await client.ask(task)
-
-# ✅ GOOD: Reuse client
-async with Client(url) as client:
-    for task in tasks:
-        await client.ask(task)
-```
-
-### 3. Use Streaming for Long Responses
-
-```python
-# Streaming shows progress and feels faster
-async for chunk in client.stream("Long task..."):
-    print(chunk, end="", flush=True)
-```
-
-### 4. Parallel Task Submission
-
-```python
-# Submit multiple tasks in parallel
-tasks = [
-    client1.ask("Task 1"),
-    client2.ask("Task 2"),
-    client3.ask("Task 3")
-]
-
-results = await asyncio.gather(*tasks)
-```
-
----
-
-## 🆘 Getting Help
-
-### Documentation & Resources
-
-- **Examples:** Check the `examples/` directory for complete working code
-- **Tests:** Review `tests/` for usage patterns and edge cases
-- **License:** See `LICENSE` file for terms and conditions
-
-### Common Questions
-
-**Q: Do I need to understand A2A protocol?**  
-A: No! That's the whole point of Synqed - it abstracts the protocol away.
-
-**Q: Can I use any LLM provider?**  
-A: In your agent executor, yes! For orchestration, we support OpenAI, Anthropic, and Google.
-
-**Q: How many agents can I run?**  
-A: As many as your system resources allow. Each agent runs on its own port.
-
-**Q: Can agents call other agents?**  
-A: Yes! Use the Client within your executor function to call other agents.
-
-**Q: Is Synqed production-ready?**  
-A: Yes, with proper error handling, logging, and monitoring in place.
-
-**Q: What's the difference between Orchestrator and TaskDelegator?**  
-A: Orchestrator routes tasks intelligently using an LLM. TaskDelegator executes the routing decision and manages the actual delegation.
-
----
-
-## 📄 License
+## License
 
 This software is proprietary and confidential. See [LICENSE](LICENSE) file for full terms.
 
 Copyright © 2025 Synq Team. All rights reserved.
-
----
-
-## 🚀 Next Steps
-
-Ready to build something amazing?
-
-1. **Install:** `pip install synqed`
-2. **Try examples:** Explore the `examples/` directory
-3. **Build your first agent:** Start with the Quick Start above
-4. **Scale up:** Add orchestration and delegation
-5. **Deploy:** Take it to production
-
-**Happy building! 🎉**
 
