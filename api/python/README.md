@@ -340,142 +340,67 @@ async with Client("http://localhost:8000") as client:
 
 ## Orchestration
 
-The **Orchestrator** uses an LLM to analyze tasks and automatically select the best agent(s) to handle them.
-
-### Basic Orchestration
+The Orchestrator uses an LLM to analyze tasks and intelligently route them to the most suitable agents, enabling seamless agent collaboration.
 
 ```python
 from synqed import Orchestrator, LLMProvider
+import os
 
-# Initialize with your LLM of choice
 orchestrator = Orchestrator(
-    provider=LLMProvider.OPENAI,  # or ANTHROPIC, GOOGLE
-    api_key="your-api-key",
+    provider=LLMProvider.OPENAI,
+    api_key=os.environ.get("OPENAI_API_KEY"),
     model="gpt-4o"
 )
 
-# Register your agents
-orchestrator.register_agent(recipe_agent.card, recipe_agent.url)
-orchestrator.register_agent(shopping_agent.card, shopping_agent.url)
-orchestrator.register_agent(weather_agent.card, weather_agent.url)
+# Register specialized agents
+orchestrator.register_agent(research_agent.card, research_agent.url)
+orchestrator.register_agent(coding_agent.card, coding_agent.url)
+orchestrator.register_agent(writing_agent.card, writing_agent.url)
 
-# Let the orchestrator decide which agent to use
+# Intelligently route complex tasks
 result = await orchestrator.orchestrate(
-    "I want to cook pasta tonight but need to know what ingredients to buy"
+    "Research quantum computing advances and write a technical report"
 )
 
-# View the results
-print(f"Selected Agent: {result.selected_agents[0].agent_name}")
+print(f"Selected: {result.selected_agents[0].agent_name}")
 print(f"Confidence: {result.selected_agents[0].confidence:.0%}")
 print(f"Reasoning: {result.selected_agents[0].reasoning}")
-print(f"Plan: {result.execution_plan}")
-```
-
-### Orchestration Result
-
-```python
-@dataclass
-class OrchestrationResult:
-    task: str                                    # The original task
-    selected_agents: list[AgentSelection]        # Best agent(s)
-    execution_plan: str                          # How to execute
-    alternative_agents: list[AgentSelection]     # Backup options
 ```
 
 ### Supported LLM Providers
 
 ```python
 # OpenAI
-orchestrator = Orchestrator(
+Orchestrator(
     provider=LLMProvider.OPENAI,
-    api_key="sk-...",
+    api_key=os.environ.get("OPENAI_API_KEY"),
     model="gpt-4o"  # or "gpt-4o-mini", "gpt-4-turbo"
 )
 
 # Anthropic
-orchestrator = Orchestrator(
+Orchestrator(
     provider=LLMProvider.ANTHROPIC,
-    api_key="sk-ant-...",
+    api_key=os.environ.get("ANTHROPIC_API_KEY"),
     model="claude-3-5-sonnet-20241022"
 )
 
 # Google
-orchestrator = Orchestrator(
+Orchestrator(
     provider=LLMProvider.GOOGLE,
-    api_key="...",
+    api_key=os.environ.get("GOOGLE_API_KEY"),
     model="gemini-2.0-flash-exp"
 )
 ```
 
-### Fine-tune Orchestration
+### Orchestration Configuration
 
 ```python
 orchestrator = Orchestrator(
     provider=LLMProvider.OPENAI,
-    api_key="sk-...",
+    api_key=os.environ.get("OPENAI_API_KEY"),
     model="gpt-4o",
-    temperature=0.7,     # Creativity (0.0 - 1.0)
-    max_tokens=2000      # Response length limit
-)
-```
-
----
-
-## Multi-Agent Delegation
-
-The **TaskDelegator** coordinates multiple agents working together on complex tasks.
-
-### Basic Delegation
-
-```python
-from synqed import TaskDelegator
-
-# Create delegator
-delegator = TaskDelegator()
-
-# Register agents
-delegator.register_agent(agent=recipe_agent)
-delegator.register_agent(agent=shopping_agent)
-delegator.register_agent(agent=weather_agent)
-
-# Submit a task - automatically routed to the right agent
-result = await delegator.submit_task(
-    "Find me a recipe and create a shopping list"
-)
-```
-
-### Delegation with Orchestrator
-
-For intelligent routing, combine TaskDelegator with Orchestrator:
-
-```python
-# Create orchestrator for intelligent routing
-orchestrator = Orchestrator(
-    provider=LLMProvider.OPENAI,
-    api_key="your-key",
-    model="gpt-4o"
-)
-
-# Create delegator with orchestrator
-delegator = TaskDelegator(orchestrator=orchestrator)
-
-# Register agents
-delegator.register_agent(agent=recipe_agent)
-delegator.register_agent(agent=shopping_agent)
-
-# Now tasks are intelligently routed using LLM analysis
-result = await delegator.submit_task(
-    "Plan dinner for a cold rainy evening"
-)
-```
-
-### Remote Agent Registration
-
-```python
-# Register a remote agent by URL
-delegator.register_agent(
-    agent_url="https://recipe-service.example.com",
-    agent_card=recipe_agent_card  # Optional pre-loaded card
+    temperature=0.7,     # Creativity level (0.0 - 1.0)
+    max_tokens=2000      # Maximum response length
 )
 ```
 
@@ -483,50 +408,11 @@ delegator.register_agent(
 
 
 
-##  Complete Examples
+## Complete Examples
 
-### Example 1: Simple Customer Support Agent
+### Example: Multi-Agent Collaboration System
 
-```python
-import asyncio
-import os
-from synqed import Agent, AgentServer
-from openai import AsyncOpenAI
-
-async def support_logic(context):
-    """Customer support agent logic."""
-    user_message = context.get_user_input()
-    
-    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    response = await client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful customer support agent. "
-                          "Be polite, professional, and solve problems efficiently."
-            },
-            {"role": "user", "content": user_message}
-        ]
-    )
-    
-    return response.choices[0].message.content
-
-async def main():
-    agent = Agent(
-        name="SupportAgent",
-        description="Customer support assistant",
-        skills=["customer_support", "ticket_routing", "faq"],
-        executor=support_logic
-    )
-    
-    server = AgentServer(agent, port=8000)
-    print(f"✅ Support agent running at {agent.url}")
-    await server.start()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+This example shows how to build a collaborative multi-agent system where agents work together on complex tasks:
 
 ### Example 2: Multi-Agent System with Orchestration
 
