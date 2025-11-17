@@ -1,70 +1,57 @@
-# Synqed - Multi-Agent Collaboration
-
-**Synqed** is a framework that allows you to build collaborative multi-agent AI systems.
+# Synqed Python API library
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-<!--[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)-->
 
-Why Synqed?
+The Synqed Python library enables AI agents to collaborate, delegate, and coordinate with each other autonomously. Build multi-agent systems where agents work together - a research agent consults specialists, a design agent brainstorms with analysts, or your OpenAI agent delegates to specialized agents. All seamlessly, all automatically.
 
-- **5 Minutes to Your First Agent** - Create production-ready agents in minutes, not hours
-- **Intelligent Orchestration** - Built-in LLM-powered routing that selects the right agent for each task
-- **Zero Protocol Knowledge Required** - High-level API abstracts away A2A complexity
-- **Multi-Agent Coordination** - Seamlessly delegate tasks across multiple specialized agents
-- **Production Ready** - Battle-tested abstractions with comprehensive error handling
+The library provides type-safe interfaces for creating collaborative agents with built-in intelligent orchestration. It works with any LLM provider (OpenAI, Anthropic, Google) and enables true agent-to-agent interaction.
 
-## 📦 Installation
+## Documentation
+
+The full API of this library can be found in the `examples/` directory and throughout this README.
+
+## Installation
 
 ```bash
+# Install from PyPI
 pip install synqed
 ```
 
-### Optional Dependencies
+Synqed works with any LLM provider. Install your preferred provider:
 
 ```bash
-# For gRPC support
-pip install synqed[grpc]
-
-# For SQL task store
-pip install synqed[sql]
-
-# Everything
-pip install synqed[all]
+pip install openai                  # For OpenAI (GPT-4, GPT-4o, etc.)
+pip install anthropic               # For Anthropic (Claude)
+pip install google-generativeai     # For Google (Gemini)
 ```
 
-### LLM Provider Dependencies
-
-Synqed's Orchestrator works with multiple LLM providers. Install your preferred provider:
+Optional dependencies for advanced features:
 
 ```bash
-# OpenAI
-pip install openai
-
-# Anthropic
-pip install anthropic
-
-# Google
-pip install google-generativeai
+pip install synqed[grpc]   # gRPC protocol support
+pip install synqed[sql]    # SQL-based task persistence
+pip install synqed[all]    # All optional features
 ```
 
-## Quick Start
+## Usage
 
-### Step 1: Create Your First Agent
+The primary API for building agent collaboration systems includes three main components: **Agent** (creates autonomous agents), **Client** (connects to agents), and **Orchestrator** (intelligently routes tasks between agents).
 
-Create a file `my_agent.py`:
+### Creating an Agent
+
+Create a collaborative agent with custom logic:
 
 ```python
-import asyncio
 import os
 from synqed import Agent, AgentServer
 
 async def agent_logic(context):
-    """Your agent's brain - this is where the magic happens."""
+    """Define your agent's behavior - use any LLM or custom logic."""
     user_message = context.get_user_input()
     
-    # Use any LLM you want
+    # Use any LLM provider
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     
     response = await client.chat.completions.create(
         model="gpt-4o-mini",
@@ -76,83 +63,110 @@ async def agent_logic(context):
     
     return response.choices[0].message.content
 
-async def main():
-    # Create your agent
-    agent = Agent(
-        name="MyFirstAgent",
-        description="A helpful AI assistant",
-        skills=["general_assistance", "question_answering"],
-        executor=agent_logic
-    )
-    
-    # Start the server
-    server = AgentServer(agent, port=8000)
-    print(f"Agent running at {agent.url}")
-    await server.start()
+# Create and serve your agent
+agent = Agent(
+    name="MyAgent",
+    description="A helpful AI assistant",
+    skills=["general_assistance", "question_answering"],
+    executor=agent_logic
+)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+server = AgentServer(agent, port=8000)
+await server.start()
 ```
 
-### Step 2: Connect a Client
+### Connecting to an Agent
 
-Create a file `client.py`:
+Interact with agents using the Client:
+
+```python
+from synqed import Client
+
+async with Client("http://localhost:8000") as client:
+    # Get complete response
+    response = await client.ask("What is machine learning?")
+    print(response)
+```
+
+### Streaming Responses
+
+Get real-time streaming responses (like ChatGPT's typing effect):
+
+```python
+async with Client("http://localhost:8000") as client:
+    async for chunk in client.stream("Tell me about quantum computing"):
+        print(chunk, end="", flush=True)
+```
+
+### Agent Collaboration with Orchestrator
+
+The Orchestrator enables agents to collaborate by intelligently routing tasks:
+
+```python
+from synqed import Orchestrator, LLMProvider
+
+# Create orchestrator with LLM-powered routing
+orchestrator = Orchestrator(
+    provider=LLMProvider.OPENAI,
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    model="gpt-4o"
+)
+
+# Register multiple specialized agents
+orchestrator.register_agent(research_agent.card, research_agent.url)
+orchestrator.register_agent(coding_agent.card, coding_agent.url)
+orchestrator.register_agent(writing_agent.card, writing_agent.url)
+
+# Orchestrator automatically selects the best agent(s) for the task
+result = await orchestrator.orchestrate(
+    "Research recent AI developments and write a technical summary"
+)
+
+print(f"Selected: {result.selected_agents[0].agent_name}")
+print(f"Confidence: {result.selected_agents[0].confidence:.0%}")
+print(f"Plan: {result.execution_plan}")
+```
+
+---
+
+## Async Usage
+
+Simply use `async`/`await` with all Synqed methods:
 
 ```python
 import asyncio
-from synqed import Client
+from synqed import Agent, AgentServer, Client
 
-async def main():
+async def main() -> None:
+    # Create agent
+    agent = Agent(
+        name="ResearchAgent",
+        description="Research specialist",
+        skills=["research", "analysis"],
+        executor=research_logic
+    )
+    
+    # Start server in background
+    server = AgentServer(agent, port=8000)
+    await server.start_background()
+    
+    # Connect and interact
     async with Client("http://localhost:8000") as client:
-        # Option 1: Simple request-response
-        response = await client.ask("What's the weather like?")
-        print(f"Agent: {response}")
-        
-        # Option 2: Streaming response (like ChatGPT typing)
-        print("Streaming: ", end="")
-        async for chunk in client.stream("Tell me a joke"):
-            print(chunk, end="", flush=True)
-        print()
+        response = await client.ask("Latest AI research trends")
+        print(response)
+    
+    await server.stop()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
-### Step 3: Run It
+Functionality between synchronous and asynchronous clients is identical.
 
-```bash
-# Terminal 1 - Start your agent
-python my_agent.py
+## Agent Skills
 
-# Terminal 2 - Connect your client
-python client.py
-```
+Agents can have simple or detailed skill definitions:
 
-**Congratulations!** You just built and deployed your first AI agent.
-
----
-
-## 📖 Core Concepts
-
-### The Three Pillars of Synqed
-
-```
-┌─────────────┬──────────────┬─────────────────┐
-│   Agents    │    Client    │  Orchestrator   │
-│             │              │                 │
-│  The brains │  The bridge  │  The director   │
-└─────────────┴──────────────┴─────────────────┘
-```
-
-1. **Agent** - An autonomous AI agent with specific skills
-2. **Client** - Connect to and communicate with agents  
-3. **Orchestrator** - Intelligently routes tasks to the right agents
-
----
-
-## Building Agents
-
-### Basic Agent
+### Simple Skills
 
 ```python
 from synqed import Agent
@@ -160,12 +174,14 @@ from synqed import Agent
 agent = Agent(
     name="WeatherAgent",
     description="Provides weather forecasts and alerts",
-    skills=["weather_forecast", "weather_alerts"],
-    executor=my_logic_function
+    skills=["weather_forecast", "weather_alerts", "climate_data"],
+    executor=weather_logic
 )
 ```
 
-### Agent with Detailed Skills
+### Detailed Skills
+
+For better orchestration, provide detailed skill descriptions:
 
 ```python
 agent = Agent(
@@ -189,115 +205,61 @@ agent = Agent(
 )
 ```
 
-### Agent Executor Function
+## Executor Functions
 
-The executor function is where your agent's logic/capability lives:
+The executor defines your agent's behavior. It receives a context and returns a response:
 
 ```python
 async def agent_logic(context):
     """
     Args:
-        context: RequestContext object with methods:
-            - get_user_input() → str: The user's message
+        context: RequestContext with methods:
+            - get_user_input() → str: User's message
             - get_task() → Task: Full task object
             - get_message() → Message: Full message object
     
     Returns:
-        str or Message: Your agent's response
+        str or Message: Agent's response
     """
     user_message = context.get_user_input()
     
-    # Your custom logic here
-    # - Call LLMs (OpenAI, Anthropic, Google, etc.)
+    # Implement any logic:
+    # - Call LLMs (OpenAI, Anthropic, Google)
     # - Query databases
     # - Call external APIs
-    # - Process data
-    # - Whatever your agent needs to do!
+    # - Delegate to other agents
     
     return "Agent response"
 ```
 
-### Agent Capabilities
+## Agent Capabilities
+
+Configure agent capabilities for advanced features:
 
 ```python
 agent = Agent(
-    name="MyAgent",
-    description="Does amazing things",
-    skills=["skill1"],
+    name="StreamingAgent",
+    description="Agent with streaming support",
+    skills=["chat", "analysis"],
     executor=logic,
     capabilities={
-        "streaming": True,              # Support real-time streaming
-        "push_notifications": False,    # Enable webhook notifications
-        "state_transition_history": False  # Track state changes
+        "streaming": True,                    # Real-time streaming
+        "push_notifications": False,          # Webhook notifications
+        "state_transition_history": False     # State tracking
     }
 )
 ```
 
-### Hosting Your Agent
+## Task Management
 
-```python
-from synqed import AgentServer
-
-# Create server
-server = AgentServer(agent, host="0.0.0.0", port=8000)
-
-# Option 1: Start in foreground (blocking)
-await server.start()
-
-# Option 2: Start in background
-await server.start_background()
-# ... do other things ...
-await server.stop()
-```
-
----
-
-## 💬 Using the Client
-
-### Two Ways to Get Responses
-
-#### 1. Complete Response (ask)
-
-Wait for the full response before continuing.
-
-```python
-from synqed import Client
-
-async with Client("http://localhost:8000") as client:
-    response = await client.ask("What's 2+2?")
-    print(response)  # "4"
-```
-
-**Use `ask()` when:**
-- You need the complete answer before proceeding
-- Response time is reasonable (< 30 seconds)
-- You want simpler code without iteration
-
-#### 2. Streaming Response (stream)
-
-Get the response piece by piece as it's generated (like ChatGPT).
+Manage long-running tasks programmatically:
 
 ```python
 async with Client("http://localhost:8000") as client:
-    async for chunk in client.stream("Tell me a story"):
-        print(chunk, end="", flush=True)  # Creates typing effect
-```
-
-**Use `stream()` when:**
-- You want to show progress to users
-- The response might be long
-- You want to process data as it arrives
-
-**Pro tip:** Use `end=""` to prevent newlines between chunks and `flush=True` to display output immediately.
-
-### Task Management
-
-```python
-async with Client("http://localhost:8000") as client:
-    # Submit a task
-    task_id = await client.submit_task("Long running operation")
+    # Submit task
+    task_id = await client.submit_task("Complex analysis task")
     
-    # Check task status
+    # Check status
     task = await client.get_task(task_id)
     print(f"Status: {task.state}")
     
@@ -305,13 +267,62 @@ async with Client("http://localhost:8000") as client:
     await client.cancel_task(task_id)
 ```
 
-### Advanced Client Features
+## Multi-Agent Delegation
+
+The TaskDelegator coordinates multiple agents working together:
 
 ```python
+from synqed import TaskDelegator, Orchestrator, LLMProvider
+
+# Create orchestrator for intelligent routing
+orchestrator = Orchestrator(
+    provider=LLMProvider.OPENAI,
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    model="gpt-4o"
+)
+
+# Create delegator
+delegator = TaskDelegator(orchestrator=orchestrator)
+
+# Register specialized agents
+delegator.register_agent(agent=research_agent)
+delegator.register_agent(agent=coding_agent)
+delegator.register_agent(agent=writing_agent)
+
+# Agents automatically collaborate on complex tasks
+result = await delegator.submit_task(
+    "Research microservices patterns and write implementation guide"
+)
+```
+
+### Remote Agent Registration
+
+Register agents running anywhere:
+
+```python
+# Register remote agent
+delegator.register_agent(
+    agent_url="https://specialist-agent.example.com",
+    agent_card=agent_card  # Optional pre-loaded card
+)
+```
+
+---
+
+## Client Configuration
+
+Customize client behavior with configuration options:
+
+```python
+from synqed import Client
+
+# Default configuration
+client = Client("http://localhost:8000")
+
 # Custom timeout
 client = Client(
     agent_url="http://localhost:8000",
-    timeout=120.0  # 2 minutes
+    timeout=120.0  # 2 minutes (default is 60)
 )
 
 # Disable streaming
@@ -319,11 +330,15 @@ client = Client(
     agent_url="http://localhost:8000",
     streaming=False
 )
+
+# Override per-request
+async with Client("http://localhost:8000") as client:
+    response = await client.with_options(timeout=30.0).ask("Quick question")
 ```
 
 ---
 
-## Orchestration (Intelligent Routing)
+## Orchestration
 
 The **Orchestrator** uses an LLM to analyze tasks and automatically select the best agent(s) to handle them.
 
