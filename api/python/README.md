@@ -33,6 +33,29 @@ pip install google-generativeai     # For Google (Gemini)
 
 The primary API for building agent collaboration systems includes three main components: **Agent** (creates autonomous agents), **Client** (connects to agents), and **Orchestrator** (intelligently routes tasks between agents).
 
+### Setup: Environment Variables
+
+Before running the examples, create a `.env` file at the root of the repository with your API keys:
+
+```bash
+# At synqed-samples/.env
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here  # Optional
+GOOGLE_API_KEY=your_google_api_key_here        # Optional
+```
+
+**Note:** The `.env` file is gitignored by default to keep your API keys secure.
+
+Then, load the environment variables in your code:
+
+```python
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load .env file
+api_key = os.getenv("OPENAI_API_KEY")
+```
+
 ### Quick Start: Your First Agent
 
 Here's the fastest way to get started:
@@ -383,9 +406,9 @@ Ready to dive deeper? Check out the complete, runnable examples in this folder.
 
 ```bash
 # Clone and run
-git clone https://github.com/SynqLabs/synqed
-cd synqed/api/python/examples
-python `example-to-run.py`
+git clone https://github.com/SynqLabs/synqed-samples
+cd synqed-samples/api/python
+python example.py
 ```
 
 ---
@@ -429,6 +452,10 @@ asyncio.run(main())
 ---
 
 ## Error Handling & Best Practices
+
+## ⚠️ Troubleshooting
+
+**If you encounter any errors, check the terminal where your server is running.** The most verbose and detailed error information appears in the server logs.
 
 ### Exception Handling
 
@@ -492,7 +519,7 @@ async with synqed.Client("http://localhost:8000") as client:
 
 ## License
 
-These examples and demos are open source and released under the MIT License. See [LICENSE](LICENSE) file for full terms.
+These examples and demos are open source and released under the MIT License. See [LICENSE](https://github.com/SynqLabs/synqed-samples/blob/main/LICENSE) file for full terms.
 
 Copyright © 2025 Synq Team. All rights reserved.
 

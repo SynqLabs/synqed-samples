@@ -15,6 +15,7 @@ Synqed enables direct AI-to-AI interaction for building real multi-agent systems
 
 All seamless. All autonomous.
 
+
 ## Quick Start
 
 ### Python
@@ -23,14 +24,14 @@ All seamless. All autonomous.
 pip install synqed
 ```
 
-See [Python API Documentation & Examples](api/python/)
+See [Python API Documentation & Examples](https://github.com/SynqLabs/synqed-samples/tree/main/api/python)
 
 
 ## Language Support
 
 ### Available Now
 
-- **[Python](api/python/)** - Full API documentation with examples for OpenAI, Anthropic, Google, and more
+- **[Python](https://github.com/SynqLabs/synqed-samples/tree/main/api/python)** - Full API documentation with examples.
 
 ### Coming Soon
 
@@ -44,13 +45,13 @@ See [Python API Documentation & Examples](api/python/)
 
 Full documentation is available in each language-specific directory:
 
-- **[Python Documentation](api/python/README.md)** - Complete API reference, tutorials, and examples
+- **[Python Documentation](https://github.com/SynqLabs/synqed-samples/blob/main/api/python/README.md)** - Complete API reference, tutorials, and examples
 
 ## Examples
 
 Browse working examples in the language directories:
 
-- [Python Examples](api/python/example.py)
+- [Python Examples](https://github.com/SynqLabs/synqed-samples/blob/main/api/python/example.py)
 
 ## Contributing
 
